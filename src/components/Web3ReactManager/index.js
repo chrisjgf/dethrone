@@ -1,50 +1,313 @@
-import React, { useState, useEffect } from 'react'
-import { useWeb3Context } from 'web3-react'
-import { ethers } from 'ethers'
+import * as React from "react";
+import {
+  Web3ReactProvider,
+  useWeb3React,
+  UnsupportedChainIdError
+} from "@web3-react/core";
+import { NoEthereumProviderError } from "@web3-react/injected-connector";
+import { Web3Provider } from "@ethersproject/providers";
+import { formatEther } from "@ethersproject/units";
 
-import { Message } from './styles'
+import { injected } from "../../connectors";
+import { useEagerConnect, useInactiveListener } from "../../hooks/index";
 
-export default function Web3ReactManager({ children }) {
-  const { setConnector, error, active } = useWeb3Context()
+const connectorsByName = {
+  Injected: injected
+};
 
-  // initialization management
-  useEffect(() => {
-    if (!active) {
-      if (window.ethereum) {
-        try {
-          const library = new ethers.providers.Web3Provider(window.ethereum)
-          library.listAccounts().then(accounts => {
-            if (accounts.length >= 1) {
-              setConnector('Injected', { suppressAndThrowErrors: true })
-            } else {
-              setConnector('Network')
-            }
-          })
-        } catch {
-          setConnector('Network')
-        }
-      } else {
-        setConnector('Network')
-      }
-    }
-  }, [active, setConnector])
-
-  const [showLoader, setShowLoader] = useState(false)
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setShowLoader(true)
-    }, 750)
-    return () => {
-      clearTimeout(timeout)
-    }
-  }, [])
-
-  if (error) {
-    console.error(error)
-    return <Message>Connection Error.</Message>
-  } else if (!active) {
-    return showLoader ? <Message>Initializing...</Message> : null
+function getErrorMessage(error) {
+  if (error instanceof NoEthereumProviderError) {
+    return "No Ethereum browser extension detected, install MetaMask on desktop or visit from a dApp browser on mobile.";
+  } else if (error instanceof UnsupportedChainIdError) {
+    return "You're connected to an unsupported network.";
   } else {
-    return children
+    console.error(error);
+    return "An unknown error occurred. Check the console for more details.";
   }
+}
+
+function getLibrary(provider) {
+  const library = new Web3Provider(provider);
+  library.pollingInterval = 8000;
+  return library;
+}
+
+export default function Web3ReactManager() {
+  return (
+    <Web3ReactProvider getLibrary={getLibrary}>
+      <MyComponent />
+    </Web3ReactProvider>
+  );
+}
+
+function MyComponent() {
+  const context = useWeb3React();
+  const {
+    connector,
+    library,
+    chainId,
+    account,
+    activate,
+    deactivate,
+    active,
+    error
+  } = context;
+
+  // handle logic to recognize the connector currently being activated
+  const [activatingConnector, setActivatingConnector] = React.useState();
+  React.useEffect(() => {
+    if (activatingConnector && activatingConnector === connector) {
+      setActivatingConnector(undefined);
+    }
+  }, [activatingConnector, connector]);
+
+  // handle logic to eagerly connect to the injected ethereum provider, if it exists and has granted access already
+  const triedEager = useEagerConnect();
+
+  // handle logic to connect in reaction to certain events on the injected ethereum provider, if it exists
+  useInactiveListener(!triedEager || !!activatingConnector);
+
+  // set up block listener
+  const [blockNumber, setBlockNumber] = React.useState();
+  React.useEffect(() => {
+    if (library) {
+      let stale = false;
+
+      library
+        .getBlockNumber()
+        .then(blockNumber => {
+          if (!stale) {
+            setBlockNumber(blockNumber);
+          }
+        })
+        .catch(() => {
+          if (!stale) {
+            setBlockNumber(null);
+          }
+        });
+
+      const updateBlockNumber = blockNumber => {
+        setBlockNumber(blockNumber);
+      };
+      library.on("block", updateBlockNumber);
+
+      return () => {
+        library.removeListener("block", updateBlockNumber);
+        stale = true;
+        setBlockNumber(undefined);
+      };
+    }
+  }, [library, chainId]);
+
+  // fetch eth balance of the connected account
+  const [ethBalance, setEthBalance] = React.useState();
+  React.useEffect(() => {
+    if (library && account) {
+      let stale = false;
+
+      library
+        .getBalance(account)
+        .then(balance => {
+          if (!stale) {
+            setEthBalance(balance);
+          }
+        })
+        .catch(() => {
+          if (!stale) {
+            setEthBalance(null);
+          }
+        });
+
+      return () => {
+        stale = true;
+        setEthBalance(undefined);
+      };
+    }
+  }, [library, account, chainId]);
+
+  return (
+    <div style={{ padding: "1rem" }}>
+      <h1 style={{ margin: "0", textAlign: "right" }}>
+        {active ? "🟢" : error ? "🔴" : "🟠"}
+      </h1>
+      <h3
+        style={{
+          display: "grid",
+          gridGap: "1rem",
+          gridTemplateColumns: "1fr min-content 1fr",
+          maxWidth: "20rem",
+          lineHeight: "2rem",
+          margin: "auto"
+        }}
+      >
+        <span>Chain Id</span>
+        <span role="img" aria-label="chain">
+          ⛓
+        </span>
+        <span>{chainId === undefined ? "..." : chainId}</span>
+
+        <span>Block Number</span>
+        <span role="img" aria-label="numbers">
+          🔢
+        </span>
+        <span>
+          {blockNumber === undefined
+            ? "..."
+            : blockNumber === null
+            ? "Error"
+            : blockNumber.toLocaleString()}
+        </span>
+
+        <span>Account</span>
+        <span role="img" aria-label="robot">
+          🤖
+        </span>
+        <span>
+          {account === undefined
+            ? "..."
+            : account === null
+            ? "None"
+            : `${account.substring(0, 6)}...${account.substring(
+                account.length - 4
+              )}`}
+        </span>
+
+        <span>Balance</span>
+        <span role="img" aria-label="gold">
+          💰
+        </span>
+        <span>
+          {ethBalance === undefined
+            ? "..."
+            : ethBalance === null
+            ? "Error"
+            : `Ξ${parseFloat(formatEther(ethBalance)).toPrecision(4)}`}
+        </span>
+      </h3>
+      <hr style={{ margin: "2rem" }} />
+      <div
+        style={{
+          display: "grid",
+          gridGap: "1rem",
+          gridTemplateColumns: "1fr 1fr",
+          maxWidth: "20rem",
+          margin: "auto"
+        }}
+      >
+        {Object.keys(connectorsByName).map(name => {
+          const currentConnector = connectorsByName[name];
+          const activating = currentConnector === activatingConnector;
+          const connected = currentConnector === connector;
+          const disabled =
+            !triedEager || !!activatingConnector || connected || !!error;
+
+          return (
+            <button
+              style={{
+                height: "3rem",
+                borderRadius: "1rem",
+                borderColor: activating
+                  ? "orange"
+                  : connected
+                  ? "green"
+                  : "unset",
+                cursor: disabled ? "unset" : "pointer",
+                position: "relative"
+              }}
+              disabled={disabled}
+              key={name}
+              onClick={() => {
+                setActivatingConnector(currentConnector);
+                activate(connectorsByName[name]);
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: "0",
+                  left: "0",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  color: "black",
+                  margin: "0 0 0 1rem"
+                }}
+              >
+                test
+              </div>
+              {name}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center"
+        }}
+      >
+        {(active || error) && (
+          <button
+            style={{
+              height: "3rem",
+              marginTop: "2rem",
+              borderRadius: "1rem",
+              borderColor: "red",
+              cursor: "pointer"
+            }}
+            onClick={() => {
+              deactivate();
+            }}
+          >
+            Deactivate
+          </button>
+        )}
+
+        {!!error && (
+          <h4 style={{ marginTop: "1rem", marginBottom: "0" }}>
+            {getErrorMessage(error)}
+          </h4>
+        )}
+      </div>
+
+      <hr style={{ margin: "2rem" }} />
+
+      <div
+        style={{
+          display: "grid",
+          gridGap: "1rem",
+          gridTemplateColumns: "fit-content",
+          maxWidth: "20rem",
+          margin: "auto"
+        }}
+      >
+        {!!(library && account) && (
+          <button
+            style={{
+              height: "3rem",
+              borderRadius: "1rem",
+              cursor: "pointer"
+            }}
+            onClick={() => {
+              library
+                .getSigner(account)
+                .signMessage("👋")
+                .then(signature => {
+                  window.alert(`Success!\n\n${signature}`);
+                })
+                .catch(error => {
+                  window.alert(
+                    "Failure!" +
+                      (error && error.message ? `\n\n${error.message}` : "")
+                  );
+                });
+            }}
+          >
+            Sign Message
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }

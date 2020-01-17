@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { useWeb3Context } from "web3-react";
+// import { useWeb3Context } from "web3-react";
 
 export default function Body({ test }) {
-  const { account, setConnector } = useWeb3Context();
+  // const { account, setConnector } = useWeb3Context();
 
   const [error, setError] = useState(false);
 
@@ -21,7 +21,6 @@ export default function Body({ test }) {
           <div>Connect Wallet</div>
           {error && <div>error</div>}
         </Account>
-        <div>{account}</div>
       </Content>
     </AppWrapper>
   );
