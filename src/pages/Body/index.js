@@ -1,25 +1,74 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-// import { useWeb3Context } from "web3-react";
+import { useWeb3React } from "@web3-react/core";
+import { ethers } from "ethers";
+import { injected } from "../../connectors";
 
 export default function Body({ test }) {
-  // const { account, setConnector } = useWeb3Context();
+  const { deactivate, library, account, activate } = useWeb3React();
+  const [ethBalance, setEthBalance] = useState();
 
-  const [error, setError] = useState(false);
+  useEffect(() => {
+    if (library && account) {
+      let stale = false;
 
-  // function handleAccount() {
-  //   setConnector("Injected", { suppressAndThrowErrors: true }).catch(error => {
-  //     setError(true);
-  //   });
-  // }
+      library
+        .getBalance(account)
+        .then(balance => {
+          if (!stale) {
+            setEthBalance(balance);
+          }
+        })
+        .catch(() => {
+          if (!stale) {
+            setEthBalance(null);
+          }
+        });
+
+      return () => {
+        stale = true;
+        setEthBalance(undefined);
+      };
+    }
+  }, [library, account]);
 
   return (
     <AppWrapper>
       <Content>
         <div>Dethrone {test}</div>
-        <Account onClick={() => {}}>
+        <div>
+          Balance:{" "}
+          {ethBalance === undefined
+            ? "..."
+            : ethBalance === null
+            ? "Error"
+            : `Ξ${ethers.utils.formatEther(ethBalance)}`}
+        </div>
+        <Account
+          onClick={() => {
+            activate(injected);
+          }}
+        >
           <div>Connect Wallet</div>
-          {error && <div>error</div>}
+        </Account>
+        <Account
+          onClick={() => {
+            deactivate();
+          }}
+        >
+          <div>Disconnect Wallet</div>
+        </Account>
+        <Account
+          onClick={() => {
+            library
+              .getSigner(account)
+              .signMessage("👋")
+              .then(signature => {
+                window.alert(`Success!\n\n${signature}`);
+              });
+          }}
+        >
+          <div>Sign Transaction</div>
         </Account>
       </Content>
     </AppWrapper>
