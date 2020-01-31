@@ -7,7 +7,7 @@ import styled, {
 
 export default createGlobalStyle`
   @import url('https://rsms.me/inter/inter.css');
-  
+
   body {
     padding: 0;
     margin: 0;
@@ -15,7 +15,7 @@ export default createGlobalStyle`
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-family: 'Arial', sans-serif;
-    background-color: #000fff;
+    background-color: #eee;
   }
 `;
 

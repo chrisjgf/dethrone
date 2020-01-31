@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useWeb3React } from "@web3-react/core";
 import { ethers } from "ethers";
-import { injected } from "../../connectors";
+import Header from "../../components/Header";
 
-export default function Body({ test }) {
-  const { deactivate, library, account, activate } = useWeb3React();
+export default function Body(props) {
+  const { library, account } = useWeb3React();
   const [ethBalance, setEthBalance] = useState();
 
   useEffect(() => {
@@ -34,30 +34,17 @@ export default function Body({ test }) {
 
   return (
     <AppWrapper>
+      <Header />
       <Content>
-        <div>Dethrone {test}</div>
-        <div>
+        <Balance>
           Balance:{" "}
           {ethBalance === undefined
             ? "..."
             : ethBalance === null
             ? "Error"
-            : `Ξ${ethers.utils.formatEther(ethBalance)}`}
-        </div>
-        <Account
-          onClick={() => {
-            activate(injected);
-          }}
-        >
-          <div>Connect Wallet</div>
-        </Account>
-        <Account
-          onClick={() => {
-            deactivate();
-          }}
-        >
-          <div>Disconnect Wallet</div>
-        </Account>
+            : `${ethers.utils.formatEther(ethBalance)}`}
+        </Balance>
+
         <Account
           onClick={() => {
             library
@@ -68,8 +55,13 @@ export default function Body({ test }) {
               });
           }}
         >
-          <div>Sign Transaction</div>
+          Sign Transaction
         </Account>
+        <br />
+        <Account>Buy Tokens</Account>
+        <Account>Sell Tokens</Account>
+        <Account>Approve Tokens</Account>
+        <Account>Claim Token</Account>
       </Content>
     </AppWrapper>
   );
@@ -84,7 +76,7 @@ const AppWrapper = styled.div`
   flex-direction: column;
   flex-wrap: wrap;
   align-items: center;
-  background-color: #aaabbb;
+  background-color: #eee;
   scroll-behavior: smooth;
 `;
 
@@ -92,13 +84,13 @@ const Content = styled.div`
   width: calc(100vw - 32px);
   max-width: 375px;
   margin-top: 72px;
-  background-color: ${props => props.theme.green};
 `;
 
 const Account = styled.div`
   background-color: ${props => (props.account ? "#f1f2f6" : props.theme.blue)};
   padding: 0.75rem;
   border-radius: 6px;
+  margin: 2px;
   cursor: ${props => (props.account ? "auto" : "pointer")};
   transform: scale(1);
   transition: transform 0.3s ease;
@@ -106,4 +98,9 @@ const Account = styled.div`
     transform: ${props => (props.account ? "scale(1)" : "scale(1.02)")};
     text-decoration: underline;
   }
+`;
+
+const Balance = styled.div`
+  margin-bottom: 8px;
+  text-align: center;
 `;
