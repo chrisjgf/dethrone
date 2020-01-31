@@ -1,9 +1,16 @@
 import React from "react";
-import styled, {
+import {
   createGlobalStyle,
-  ThemeProvider as StyledComponentsThemeProvider,
-  keyframes
+  ThemeProvider as StyledComponentsThemeProvider
 } from "styled-components";
+
+export function ThemeProvider({ children }) {
+  return (
+    <StyledComponentsThemeProvider theme={theme}>
+      {children}
+    </StyledComponentsThemeProvider>
+  );
+}
 
 export default createGlobalStyle`
   @import url('https://rsms.me/inter/inter.css');
@@ -31,26 +38,3 @@ const theme = {
   white: "#FFF",
   black: "#000"
 };
-
-const rotate = keyframes`
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-`;
-
-export const Spinner = styled.img`
-  animation: 2s ${rotate} linear infinite;
-  width: 16px;
-  height: 16px;
-`;
-
-export function ThemeProvider({ children }) {
-  return (
-    <StyledComponentsThemeProvider theme={theme}>
-      {children}
-    </StyledComponentsThemeProvider>
-  );
-}

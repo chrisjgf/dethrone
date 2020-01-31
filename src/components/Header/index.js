@@ -4,6 +4,19 @@ import styled from "styled-components";
 import { darken } from "polished";
 import Web3Status from "../Web3Status";
 
+export default function Header() {
+  return (
+    <HeaderFrame>
+      <HeaderElement>
+        <Title>Dethrone</Title>
+      </HeaderElement>
+      <HeaderElement>
+        <Web3Status />
+      </HeaderElement>
+    </HeaderFrame>
+  );
+}
+
 const HeaderFrame = styled.div`
   display: flex;
   align-items: center;
@@ -36,16 +49,3 @@ const Title = styled.div`
     }
   }
 `;
-
-export default function Header() {
-  return (
-    <HeaderFrame>
-      <HeaderElement>
-        <Title>Dethrone</Title>
-      </HeaderElement>
-      <HeaderElement>
-        <Web3Status />
-      </HeaderElement>
-    </HeaderFrame>
-  );
-}
